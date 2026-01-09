@@ -7,15 +7,4 @@ class ProfileGccMsp430(ContextBase):
 
     def __init__(self):
         super(ProfileGccMsp430, self).__init__()
-        self._suppressed_names.extend([
-                'debug_line',
-                'debug_info',
-                'debug_ranges',
-                'debug_aranges',
-                'debug_loc',
-                'debug_str',
-                'debug_frame',
-                'debug_abbrev',
-                'comment',
-                'MSP430'
-        ])
+        self._suppressed_names.extend(['MSP430'])
