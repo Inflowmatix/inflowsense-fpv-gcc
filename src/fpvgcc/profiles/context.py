@@ -3,7 +3,21 @@
 class ContextBase(object):
 
     def __init__(self):
-        self._suppressed_names = []
+        self._suppressed_names = [
+            'attributes',
+            'comment',
+            'debug_abbrev',
+            'debug_aranges',
+            'debug_frame',
+            'debug_info',
+            'debug_line',
+            'debug_line_str',
+            'debug_loc',
+            'debug_loclists',
+            'debug_ranges',
+            'debug_rnglists',
+            'debug_str',
+        ]
         self._suppressed_regions = ['*default*']
 
     @property
