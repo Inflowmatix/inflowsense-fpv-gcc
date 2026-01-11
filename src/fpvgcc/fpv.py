@@ -352,9 +352,11 @@ def process_linkermap_section_headings_line(l, sm):
             newnode = newnode.push_to_leaf()
     if match.group('address') is not None:
         sm.linkermap_section = newnode
+        sm.linkermap_lastsymbol = None
         sm.LINKERMAP_STATE = 'IN_SECTION'
     else:
         sm.linkermap_section = newnode
+        sm.linkermap_lastsymbol = None
         sm.LINKERMAP_STATE = 'GOT_SECTION_NAME'
 
 
@@ -382,7 +384,12 @@ def process_linkermap_symbol_line(l, sm):
     if name is None:
         return
     if name == '*fill*':
-        sm.linkermap_lastsymbol.fillsize = match.group('size').strip()
+        if sm.linkermap_lastsymbol is not None:
+            sm.linkermap_lastsymbol.fillsize = match.group('size').strip()
+        else:
+            # No symbol has been found in this section yet,
+            # so allocate the fill to the section itself.
+            sm.linkermap_section.fillsize = match.group('size').strip()
         return
     arfile = None
     objfile = None
