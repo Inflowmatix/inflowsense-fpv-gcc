@@ -556,6 +556,34 @@ def cleanup_and_pack_map(sm):
             node.fillsize = 0
 
 
+def merge_constants(sm):
+    # Expected address of the next constant if it is not merged
+    expected_address = 0
+
+    # Iterate nodes in address order
+    nodes = sorted(sm.memory_map.root.all_nodes(), key=lambda node: node.address)
+    for node in nodes:
+        # Look for constants
+        if 'rodata' in node.gident and node.region != 'UNDEF':
+            # Will be needed later to update the expected address
+            node_size = node.size
+
+            # Has this constant been merged?
+            merged_bytes = 0
+            if int(node.address, 16) < expected_address:
+                # Calculate how many bytes were merged
+                merged_bytes = expected_address - int(node.address, 16)
+                if merged_bytes > node.size:
+                    merged_bytes = node.size
+
+                # Adjust the size to account for the merge
+                node.osize = hex(node.size - merged_bytes)
+
+            # Update the expected address of the next constant if it is not merged
+            if int(node.address, 16) + node_size > expected_address:
+                expected_address = int(node.address, 16) + node_size
+
+
 def process_map_file(fname, profile=None):
     if profile is None:
         profile = get_profile('default')
@@ -581,6 +609,7 @@ def process_map_file(fname, profile=None):
                 elif sm.state == 'IN_LINKER_SCRIPT_AND_MEMMAP':
                     process_linkermap_line(line, sm)
     cleanup_and_pack_map(sm)
+    merge_constants(sm)
     return sm
 
 
