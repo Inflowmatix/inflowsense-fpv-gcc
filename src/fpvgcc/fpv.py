@@ -373,6 +373,50 @@ def process_linkermap_section_heading_detail_line(l, sm):
     sm.LINKERMAP_STATE = 'IN_SECTION'
 
 
+def check_symbol_discards_last(sm, newnode):
+    """Check for symbols that are located at the same address as the last
+    symbol; if so then discard the last symbol.
+    """
+    if sm.linkermap_lastsymbol:
+        if newnode.address == sm.linkermap_lastsymbol.address:
+            # Discard the last symbol.
+            sm.linkermap_lastsymbol.osize = '0x0'
+            sm.linkermap_lastsymbol.fillsize = 0
+            logging.warning("Symbol " + newnode.gident
+                    + " discards symbol " + sm.linkermap_lastsymbol.gident
+                    + " at address " + sm.linkermap_lastsymbol.address
+            )
+
+
+def allocate_fill(sm, fillsize, address):
+    """Allocate the fill to the last symbol, or to the section if no symbol has
+    yet been found in the current section.
+    
+    Also check for fills that are located at the same address as the last
+    symbol; if so then discard the last symbol except for the fill (ideally the 
+    fill should be allocated to the symbol that precedes the last symbol, but 
+    that requires keeping history, especially if multiple consecutive symbols
+    are discarded).
+    """
+    if sm.linkermap_lastsymbol:
+        # Allocate the fill to the last symbol.
+        sm.linkermap_lastsymbol.fillsize = fillsize
+
+        # Look for fills located at the same address as the last symbol.
+        if address == sm.linkermap_lastsymbol.address:
+            # Keep the fill but otherwise discard the last symbol.
+            sm.linkermap_lastsymbol.osize = '0x0'
+            logging.warning("Fill discards symbol " 
+                + sm.linkermap_lastsymbol.gident
+                + " at address " 
+                + sm.linkermap_lastsymbol.address
+            )
+    else:
+        # No symbol has been found in this section yet,
+        # so allocate the fill to the section itself.
+        sm.linkermap_section.fillsize += fillsize
+
+
 def process_linkermap_symbol_line(l, sm):
     if sm.linkermap_symbol is not None:
         logging.warning("Probably Missed Symbol Detail : " +
@@ -384,12 +428,9 @@ def process_linkermap_symbol_line(l, sm):
     if name is None:
         return
     if name == '*fill*':
-        if sm.linkermap_lastsymbol is not None:
-            sm.linkermap_lastsymbol.fillsize = match.group('size').strip()
-        else:
-            # No symbol has been found in this section yet,
-            # so allocate the fill to the section itself.
-            sm.linkermap_section.fillsize = match.group('size').strip()
+        fillsize = int(match.group('size').strip(), 16)
+        address = match.group('address').strip()
+        allocate_fill(sm, fillsize, address)
         return
     arfile = None
     objfile = None
@@ -417,6 +458,7 @@ def process_linkermap_symbol_line(l, sm):
         newnode.osize = match.group('size').strip()
         if len(newnode.children) > 0:
             newnode = newnode.push_to_leaf()
+    check_symbol_discards_last(sm, newnode)
     sm.linkermap_lastsymbol = newnode
 
 
@@ -481,6 +523,7 @@ def process_linkermap_section_detail_line(l, sm):
         newnode.osize = match.group('size').strip()
         if len(newnode.children) > 0:
             newnode = newnode.push_to_leaf()
+    check_symbol_discards_last(sm, newnode)
     sm.linkermap_lastsymbol = newnode
     sm.linkermap_symbol = None
 
